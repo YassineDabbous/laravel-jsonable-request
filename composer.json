@@ -1,5 +1,4 @@
 {
-    "version": "0.0.1",
     "name": "yassinedabbous/laravel-jsonable-request",
     "description": "Build http requests from Array/Json",
     "type": "library",

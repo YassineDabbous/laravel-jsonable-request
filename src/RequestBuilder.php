@@ -40,7 +40,7 @@ class RequestBuilder implements RequestBuilderContract
         $bodyFormat = $template['body_format'];
         $body = $template['data'];
         
-        $request = Http::createPendingRequest();
+        $request = Http::baseUrl($url); // ::createPendingRequest(); >L11
 
         if($auth = $template['auth'] ?? null){
             $type = $auth['type'] ?? 'basic';

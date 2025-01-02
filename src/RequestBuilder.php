@@ -7,6 +7,14 @@ use YassineDabbous\JsonableRequest\RequestBuilderContract;
 
 class RequestBuilder implements RequestBuilderContract
 {
+    public function strict_replace(array|string $search, $replace, array|string $subject): mixed {
+        $subject = str_replace($search, $replace, $subject);
+        if(is_numeric($subject)){
+            return $subject + 0;
+        }
+        return $subject;
+    }
+
     public function parse(array $template, array $data): array
     {
         $keys = array_map(fn($v) => "{{$v}}", array_keys($data));
@@ -19,8 +27,8 @@ class RequestBuilder implements RequestBuilderContract
         $template['method'] = $template['method'] ?? 'POST';
         $template['body_format'] = $template['body_format'] ?? ($template['method'] == 'GET' ? 'query' : 'json');
 
-        $template['data'] = array_map(fn($v) => str_replace($keys, $values, $v), $template['data'] ?? []);
-        
+        $template['data'] = array_map(fn($v) => $this->strict_replace($keys, $values, $v), $template['data'] ?? []);
+
         if(isset($template['auth'])){
             $template['auth'] = array_map(fn($v) => str_replace($keys, $values, $v), $template['auth'] ?? []);
         }

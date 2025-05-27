@@ -14,14 +14,13 @@ class RequestBuilder implements RequestBuilderContract
             throw new InvalidArgumentException("Request template must define an 'endpoint'.");
         }
 
-        if(isset($template['auth'])){
-            $type = $auth['type'] ?? null;
-            if($type === 'basic' && (!isset($auth['username']) || !isset($auth['password']))){
-                throw new InvalidArgumentException("Basic auth require a username and a password.");
-            }
-            if($type === 'digest' && (!isset($auth['username']) || !isset($auth['password']))){
-                throw new InvalidArgumentException("Basic auth require a username and a password.");
-            }
+        $template['auth'] ??= [];
+        $type = $template['auth']['type'] ?? null;
+        if($type === 'basic' && (!isset($template['auth']['username']) || !isset($template['auth']['password']))){
+            throw new InvalidArgumentException("Basic auth require a username and a password.");
+        }
+        if($type === 'digest' && (!isset($template['auth']['username']) || !isset($template['auth']['password']))){
+            throw new InvalidArgumentException("Digest auth require a username and a password.");
         }
         
         $template['headers'] ??= [];
@@ -33,13 +32,6 @@ class RequestBuilder implements RequestBuilderContract
     }
     
     
-    public function strict_replace(array|string $search, $replace, array|string $subject): mixed {
-        $subject = str_replace($search, $replace, $subject);
-        if(is_numeric($subject)){
-            return $subject + 0;
-        }
-        return $subject;
-    }
 
     public function parse(array $template, array $data): array
     {
@@ -48,15 +40,13 @@ class RequestBuilder implements RequestBuilderContract
         $keys = array_map(fn($v) => "{{$v}}", array_keys($data));
         $values = array_values($data);
 
-        $template['endpoint'] = str_replace($keys, $values, $template['endpoint']);
+        $template['endpoint'] = $this->interpolate($template['endpoint'], $keys, $values);
 
-        $template['headers'] = array_map(fn($v) => str_replace($keys, $values, $v), $template['headers']);
+        $template['headers'] = $this->interpolate($template['headers'], $keys, $values);
 
-        $template['data'] = array_map(fn($v) => $this->strict_replace($keys, $values, $v), $template['data']);
-
-        if(isset($template['auth'])){
-            $template['auth'] = array_map(fn($v) => str_replace($keys, $values, $v), $template['auth']);
-        }
+        $template['data'] = $this->interpolate($template['data'], $keys, $values);
+        
+        $template['auth'] = $this->interpolate($template['auth'], $keys, $values);
         
         return $template;
     }
@@ -75,16 +65,16 @@ class RequestBuilder implements RequestBuilderContract
         $bodyFormat = $template['body_format'];
         $body = $template['data'];
         
-        $request = Http::withHeaders($headers); // ::createPendingRequest(); >L11
+        $request = Http::withHeaders($headers); // Http::createPendingRequest() require L>11
 
-        if($auth = $template['auth'] ?? null){
-            $type = $auth['type'] ?? 'basic';
+        if(count($template['auth'])){
+            $type = $template['auth']['type'] ?? 'basic';
             if($type === 'basic'){
-                $request->withBasicAuth($auth['username'], $auth['password']);
+                $request->withBasicAuth($template['auth']['username'], $template['auth']['password']);
             } else if ($type === 'digest'){
-                $request->withDigestAuth($auth['username'], $auth['password']);
-            } else if (isset( $auth['token'] )){
-                $request->withToken($auth['token']);
+                $request->withDigestAuth($template['auth']['username'], $template['auth']['password']);
+            } else if (isset( $template['auth']['token'] )){
+                $request->withToken($template['auth']['token']);
             }
         }
 
@@ -97,6 +87,38 @@ class RequestBuilder implements RequestBuilderContract
         );
     }
 
+
+    /** Recursively replace values while preserving data types. */
+    private function interpolate(mixed $value, array $keys, array $values): mixed
+    {
+        if (is_array($value)) {
+            return array_map(fn($v) => $this->interpolate($v, $keys, $values), $value);
+        }
+
+        if (is_string($value)) {
+            // Check for exact match first to preserve original data type
+            foreach ($keys as $index => $keyPlaceholder) {
+                if ($value === $keyPlaceholder) {
+                    return $values[$index];
+                }
+            }
+
+            // non-scalar types (arrays, objects) would cause "Array to string conversion"
+            $scalarKeys = [];
+            $scalarValues = [];
+            foreach ($keys as $index => $keyPlaceholder) {
+                $originalValue = $values[$index];
+                if (is_scalar($originalValue) || is_null($originalValue)) {
+                    $scalarKeys[] = $keyPlaceholder;
+                    $scalarValues[] = $originalValue;
+                }
+            }
+            return str_replace($scalarKeys, $scalarValues, $value);
+        }
+        
+         // Return non-string, non-array values as is
+        return $value;
+    }
 
     
 }

@@ -52,9 +52,9 @@ class RequestBuilder implements RequestBuilderContract
 
         if($auth = $template['auth'] ?? null){
             $type = $auth['type'] ?? 'basic';
-            if($type === 'basic' && isset($auth['username']) && isset($auth['username'])){
+            if($type === 'basic' && isset($auth['username']) && isset($auth['password'])){
                 $request->withBasicAuth($auth['username'], $auth['password']);
-            } else if ($type === 'digest' && isset($auth['username']) && isset($auth['username'])){
+            } else if ($type === 'digest' && isset($auth['username']) && isset($auth['password'])){
                 $request->withDigestAuth($auth['username'], $auth['password']);
             } else if (isset( $auth['token'] )){
                 $request->withToken($auth['token']);

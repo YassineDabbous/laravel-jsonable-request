@@ -4,6 +4,7 @@ namespace YassineDabbous\JsonableRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use YassineDabbous\JsonableRequest\RequestBuilderContract;
+use InvalidArgumentException;
 
 class RequestBuilder implements RequestBuilderContract
 {
@@ -19,6 +20,10 @@ class RequestBuilder implements RequestBuilderContract
     {
         $keys = array_map(fn($v) => "{{$v}}", array_keys($data));
         $values = array_values($data);
+
+        if (!isset($template['endpoint'])) {
+            throw new InvalidArgumentException("Request template must define an 'endpoint'.");
+        }
 
         $template['endpoint'] = str_replace($keys, $values, $template['endpoint']);
 

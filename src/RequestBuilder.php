@@ -37,7 +37,7 @@ class RequestBuilder implements RequestBuilderContract
     {
         $template = $this->validate($template);
 
-        $keys = array_map(fn($v) => "{{$v}}", array_keys($data));
+        $keys = array_map(fn($v) => "{{{$v}}}", array_keys($data));
         $values = array_values($data);
 
         $template['endpoint'] = $this->interpolate($template['endpoint'], $keys, $values);
